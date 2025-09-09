@@ -1,0 +1,5 @@
+# Base44 Configuration
+VITE_BASE44_APP_ID=68c037e8dae568865c1878d5
+
+# Add any other environment variables your app needs
+# VITE_API_URL=https://api.example.com

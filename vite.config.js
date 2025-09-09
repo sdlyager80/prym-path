@@ -6,7 +6,9 @@ import path from 'path'
 export default defineConfig({
   plugins: [react()],
   server: {
-    allowedHosts: true
+    allowedHosts: true,
+    host: true,
+    port: 3000
   },
   resolve: {
     alias: {
@@ -21,4 +23,10 @@ export default defineConfig({
       },
     },
   },
-}) 
+  build: {
+    outDir: 'dist',
+    sourcemap: true,
+    minify: 'esbuild',
+    target: 'esnext'
+  }
+})
