@@ -1,7 +1,7 @@
-// Mock implementation to remove Base44 dependencies
+import { supabase } from '@/lib/supabase';
 
-// Mock data storage
-const mockData = {
+// Static data for skills and assessments (could be moved to Supabase tables later)
+const staticData = {
   skillMappings: [
     {
       id: '1',
@@ -44,7 +44,6 @@ const mockData = {
       priority: 5
     }
   ],
-  submissions: [],
   assessments: [
     {
       id: 'assess-1',
@@ -98,97 +97,287 @@ const mockData = {
       correct_answers: ['Each customer gets a dedicated instance', 'Instances can be cloned for testing'],
       points: 10
     }
-  ],
-  attempts: []
+  ]
 };
 
-// Mock entity implementations
+// Mock implementations for when Supabase is not available
+const mockImplementations = {
+  SkillMapping: {
+    list: async (orderBy, limit) => {
+      let data = [...staticData.skillMappings];
+      if (orderBy && orderBy.startsWith('-')) {
+        const field = orderBy.substring(1);
+        data.sort((a, b) => b[field] - a[field]);
+      }
+      if (limit) {
+        data = data.slice(0, limit);
+      }
+      return data;
+    }
+  },
+  
+  UserExerciseSubmission: {
+    list: async () => [],
+    filter: async () => [],
+    create: async (data) => ({ id: `mock-${Date.now()}`, ...data })
+  },
+  
+  Assessment: {
+    list: async () => staticData.assessments,
+    get: async (id) => staticData.assessments.find(a => a.id === id)
+  },
+  
+  AssessmentQuestion: {
+    filter: async (filters) => {
+      return staticData.assessmentQuestions.filter(q => 
+        Object.entries(filters).every(([key, value]) => q[key] === value)
+      );
+    }
+  },
+  
+  UserAssessmentAttempt: {
+    list: async () => [],
+    get: async () => null,
+    create: async (data) => ({ id: `mock-${Date.now()}`, ...data }),
+    update: async (id, data) => ({ id, ...data }),
+    filter: async () => []
+  },
+  
+  User: {
+    me: async () => ({ id: 'demo-user', email: 'demo@example.com', name: 'Demo User' })
+  }
+};
+
+// Entity implementations
 export const SkillMapping = {
   list: async (orderBy, limit) => {
-    let data = [...mockData.skillMappings];
-    if (orderBy && orderBy.startsWith('-')) {
-      const field = orderBy.substring(1);
-      data.sort((a, b) => b[field] - a[field]);
-    }
-    if (limit) {
-      data = data.slice(0, limit);
-    }
-    return data;
+    // For now, use static data. Later can move to Supabase table
+    return mockImplementations.SkillMapping.list(orderBy, limit);
   }
 };
 
 export const UserExerciseSubmission = {
   list: async (filters) => {
-    if (filters?.status) {
-      return mockData.submissions.filter(s => s.status === filters.status);
+    if (!supabase) return mockImplementations.UserExerciseSubmission.list(filters);
+    
+    try {
+      let query = supabase
+        .from('exercise_submissions')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (filters?.status) {
+        query = query.eq('status', filters.status);
+      }
+      
+      const { data, error } = await query;
+      if (error) throw error;
+      
+      return data || [];
+    } catch (error) {
+      console.error('Error fetching submissions:', error);
+      return [];
     }
-    return mockData.submissions;
   },
   
   filter: async (filters) => {
-    return mockData.submissions.filter(s => 
-      Object.entries(filters).every(([key, value]) => s[key] === value)
-    );
+    if (!supabase) return mockImplementations.UserExerciseSubmission.filter(filters);
+    
+    try {
+      let query = supabase.from('exercise_submissions').select('*');
+      
+      Object.entries(filters).forEach(([key, value]) => {
+        query = query.eq(key, value);
+      });
+      
+      const { data, error } = await query;
+      if (error) throw error;
+      
+      return data || [];
+    } catch (error) {
+      console.error('Error filtering submissions:', error);
+      return [];
+    }
   },
   
   create: async (data) => {
-    const newSubmission = {
-      id: `sub-${Date.now()}`,
-      ...data,
-      created_at: new Date().toISOString()
-    };
-    mockData.submissions.push(newSubmission);
-    return newSubmission;
+    if (!supabase) return mockImplementations.UserExerciseSubmission.create(data);
+    
+    try {
+      const user = await User.me();
+      if (!user) throw new Error('User not authenticated');
+      
+      const { data: submission, error } = await supabase
+        .from('exercise_submissions')
+        .upsert({
+          user_id: user.id,
+          exercise_id: data.exercise_id,
+          status: data.status || 'completed',
+          time_spent_minutes: data.time_spent_minutes || 0,
+          submission_notes: data.submission_notes
+        })
+        .select()
+        .single();
+      
+      if (error) throw error;
+      
+      return submission;
+    } catch (error) {
+      console.error('Error creating submission:', error);
+      throw error;
+    }
   }
 };
 
 export const Assessment = {
-  list: async () => mockData.assessments,
-  get: async (id) => mockData.assessments.find(a => a.id === id)
+  list: async () => staticData.assessments,
+  get: async (id) => staticData.assessments.find(a => a.id === id)
 };
 
 export const AssessmentQuestion = {
   filter: async (filters) => {
-    return mockData.assessmentQuestions.filter(q => 
+    return staticData.assessmentQuestions.filter(q => 
       Object.entries(filters).every(([key, value]) => q[key] === value)
     );
   }
 };
 
 export const UserAssessmentAttempt = {
-  list: async () => mockData.attempts,
-  get: async (id) => mockData.attempts.find(a => a.id === id),
-  
-  create: async (data) => {
-    const newAttempt = {
-      id: `attempt-${Date.now()}`,
-      ...data,
-      created_at: new Date().toISOString()
-    };
-    mockData.attempts.push(newAttempt);
-    return newAttempt;
+  list: async () => {
+    if (!supabase) return mockImplementations.UserAssessmentAttempt.list();
+    
+    try {
+      const { data, error } = await supabase
+        .from('assessment_attempts')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      
+      return data || [];
+    } catch (error) {
+      console.error('Error fetching attempts:', error);
+      return [];
+    }
   },
   
-  update: async (id, data) => {
-    const index = mockData.attempts.findIndex(a => a.id === id);
-    if (index !== -1) {
-      mockData.attempts[index] = { ...mockData.attempts[index], ...data };
-      return mockData.attempts[index];
+  get: async (id) => {
+    if (!supabase) return mockImplementations.UserAssessmentAttempt.get(id);
+    
+    try {
+      const { data, error } = await supabase
+        .from('assessment_attempts')
+        .select('*')
+        .eq('id', id)
+        .single();
+      
+      if (error) throw error;
+      
+      return data;
+    } catch (error) {
+      console.error('Error fetching attempt:', error);
+      return null;
     }
-    return null;
+  },
+  
+  create: async (data) => {
+    if (!supabase) return mockImplementations.UserAssessmentAttempt.create(data);
+    
+    try {
+      const user = await User.me();
+      if (!user) throw new Error('User not authenticated');
+      
+      const { data: attempt, error } = await supabase
+        .from('assessment_attempts')
+        .insert({
+          user_id: user.id,
+          assessment_id: data.assessment_id,
+          status: data.status || 'in_progress',
+          answers: data.answers || {},
+          started_at: data.started_at || new Date().toISOString()
+        })
+        .select()
+        .single();
+      
+      if (error) throw error;
+      
+      return attempt;
+    } catch (error) {
+      console.error('Error creating attempt:', error);
+      throw error;
+    }
+  },
+  
+  update: async (id, updates) => {
+    if (!supabase) return mockImplementations.UserAssessmentAttempt.update(id, updates);
+    
+    try {
+      const { data, error } = await supabase
+        .from('assessment_attempts')
+        .update({
+          ...updates,
+          ...(updates.status === 'completed' && !updates.completed_at && {
+            completed_at: new Date().toISOString()
+          })
+        })
+        .eq('id', id)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      
+      return data;
+    } catch (error) {
+      console.error('Error updating attempt:', error);
+      throw error;
+    }
   },
   
   filter: async (filters) => {
-    return mockData.attempts.filter(a => 
-      Object.entries(filters).every(([key, value]) => a[key] === value)
-    );
+    if (!supabase) return mockImplementations.UserAssessmentAttempt.filter(filters);
+    
+    try {
+      let query = supabase.from('assessment_attempts').select('*');
+      
+      Object.entries(filters).forEach(([key, value]) => {
+        query = query.eq(key, value);
+      });
+      
+      const { data, error } = await query;
+      if (error) throw error;
+      
+      return data || [];
+    } catch (error) {
+      console.error('Error filtering attempts:', error);
+      return [];
+    }
   }
 };
 
 export const User = {
-  me: async () => ({
-    id: 'user-1',
-    email: 'student@example.com',
-    name: 'Demo Student'
-  })
+  me: async () => {
+    if (!supabase) return mockImplementations.User.me();
+    
+    try {
+      const { data: { user }, error } = await supabase.auth.getUser();
+      
+      if (error || !user) return null;
+      
+      // Get profile data
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+      
+      return {
+        id: user.id,
+        email: user.email,
+        name: profile?.full_name || user.email.split('@')[0]
+      };
+    } catch (error) {
+      console.error('Error getting user:', error);
+      return null;
+    }
+  }
 };
