@@ -1,18 +1,14 @@
-import './App.css'
-import Pages from "@/pages/index.jsx"
-import { Toaster } from "@/components/ui/toaster"
-import { AuthProvider } from "@/contexts/AuthContext"
-import { BrowserRouter } from 'react-router-dom'
+import './App.css';
+import Pages from "./pages/index.jsx";
+import { Toaster } from "./components/ui/toaster";
 
 function App() {
   return (
-    <BrowserRouter>
-      <AuthProvider>
-        <Pages />
-        <Toaster />
-      </AuthProvider>
-    </BrowserRouter>
-  )
+    <>
+      <Pages />
+      <Toaster />
+    </>
+  );
 }
 
-export default App
+export default App;
