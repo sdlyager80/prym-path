@@ -8,7 +8,7 @@ import AssessmentAttempt from "./AssessmentAttempt";
 import Resources from "./Resources";
 import CapstoneProject from "./CapstoneProject";
 
-import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-router-dom';
+import { Route, Routes, useLocation } from 'react-router-dom'; // ← Removed BrowserRouter import
 
 const PAGES = {
     Dashboard: Dashboard,
@@ -34,8 +34,8 @@ function _getCurrentPage(url) {
     return pageName || Object.keys(PAGES)[0];
 }
 
-// Create a wrapper component that uses useLocation inside the Router context
-function PagesContent() {
+// No longer wrapping with Router since App.jsx already has BrowserRouter
+export default function Pages() {
     const location = useLocation();
     const currentPage = _getCurrentPage(location.pathname);
     
@@ -53,13 +53,5 @@ function PagesContent() {
                 <Route path="/CapstoneProject" element={<CapstoneProject />} />
             </Routes>
         </Layout>
-    );
-}
-
-export default function Pages() {
-    return (
-        <Router>
-            <PagesContent />
-        </Router>
     );
 }
