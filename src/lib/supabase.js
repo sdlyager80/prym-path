@@ -74,7 +74,7 @@ export const auth = {
 
   // Listen to auth changes
   onAuthStateChange: (callback) => {
-    if (!supabase) return { unsubscribe: () => {} };
+    if (!supabase) return { data: { subscription: { unsubscribe: () => {} } } };
     
     return supabase.auth.onAuthStateChange((event, session) => {
       callback(event, session);
