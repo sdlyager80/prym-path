@@ -46,13 +46,13 @@ export const AuthProvider = ({ children }) => {
 
   const signUp = async (email, password, fullName) => {
     try {
-      const { user, session, error } = await auth.signUp(email, password, {
+      const { data, error } = await auth.signUp(email, password, {
         full_name: fullName
       });
       
       if (error) throw error;
       
-      return { user, session, error: null };
+      return { user: data.user, session: data.session, error: null };
     } catch (error) {
       return { user: null, session: null, error };
     }
@@ -60,11 +60,11 @@ export const AuthProvider = ({ children }) => {
 
   const signIn = async (email, password) => {
     try {
-      const { user, session, error } = await auth.signIn(email, password);
+      const { data, error } = await auth.signIn(email, password);
       
       if (error) throw error;
       
-      return { user, session, error: null };
+      return { user: data.user, session: data.session, error: null };
     } catch (error) {
       return { user: null, session: null, error };
     }

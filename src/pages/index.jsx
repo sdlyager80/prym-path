@@ -43,6 +43,7 @@ export default function Pages() {
         <Layout currentPageName={currentPage}>
             <Routes>            
                 <Route path="/" element={<Dashboard />} />
+                <Route path="/login" element={<LoginPage />} />
                 <Route path="/Dashboard" element={<Dashboard />} />
                 <Route path="/Phases" element={<Phases />} />
                 <Route path="/Exercise" element={<Exercise />} />

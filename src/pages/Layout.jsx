@@ -1,13 +1,15 @@
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import { createPageUrl } from "@/utils";
+import { useAuth } from "@/contexts/AuthContext";
 import { 
   BarChart3, 
   Map, 
   Zap, 
   FileText,
   Award,
-  GraduationCap
+  GraduationCap,
+  LogOut
 } from "lucide-react";
 import {
   Sidebar,
@@ -22,6 +24,7 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
+import { Button } from "@/components/ui/button";
 
 const navigationItems = [
   {
@@ -64,6 +67,11 @@ const navigationItems = [
 
 export default function Layout({ children, currentPageName }) {
   const location = useLocation();
+  const { user, signOut, isAuthenticated } = useAuth();
+
+  const handleSignOut = async () => {
+    await signOut();
+  };
 
   return (
     <SidebarProvider>
@@ -109,10 +117,28 @@ export default function Layout({ children, currentPageName }) {
           </SidebarContent>
 
           <SidebarFooter className="border-t border-gray-200 p-4">
-            <div className="text-xs text-gray-500">
-              <div className="font-medium">PRYM Path</div>
-              <div>Salesforce to ServiceNow Training</div>
-            </div>
+            {isAuthenticated && user ? (
+              <div className="space-y-2">
+                <div className="text-xs text-gray-500">
+                  <div className="font-medium">Signed in as:</div>
+                  <div className="truncate">{user.email}</div>
+                </div>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={handleSignOut}
+                  className="w-full justify-start text-gray-600 hover:text-gray-900"
+                >
+                  <LogOut className="w-4 h-4 mr-2" />
+                  Sign Out
+                </Button>
+              </div>
+            ) : (
+              <div className="text-xs text-gray-500">
+                <div className="font-medium">PRYM Path</div>
+                <div>Salesforce to ServiceNow Training</div>
+              </div>
+            )}
           </SidebarFooter>
         </Sidebar>
 
@@ -122,6 +148,16 @@ export default function Layout({ children, currentPageName }) {
             <div className="flex items-center gap-4">
               <SidebarTrigger />
               <h1 className="text-xl font-semibold">PRYM Path</h1>
+              {isAuthenticated && (
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={handleSignOut}
+                  className="ml-auto"
+                >
+                  <LogOut className="w-4 h-4" />
+                </Button>
+              )}
             </div>
           </header>
 
